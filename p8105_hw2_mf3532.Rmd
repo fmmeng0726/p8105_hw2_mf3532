@@ -1,0 +1,188 @@
+---
+title: "P8105_HW2"
+author: "Meng Fang"
+date: '2022-09-19'
+output: github_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(readr)
+library(readxl)
+library(tidyr)
+library(stringr)
+```
+
+
+## Problem 1
+
+```{r}
+nyc_transit <- read_csv(file = "./NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>% janitor::clean_names()
+head(nyc_transit)
+```
+
+```{r}
+tidy_transit <- nyc_transit %>%
+  select(2:18, 20, 23) %>%
+  mutate(route8 = as.character(route8), route9 = as.character(route9), route10 = as.character(route10), route11 = as.character(route11)) %>%
+  pivot_longer(5:15, names_to = "routes", values_to = "route.number") %>%
+  mutate(entry = ifelse(entry == "YES", TRUE, FALSE)) %>%
+  drop_na()
+
+tidy_transit
+```
+- number of distinct station
+
+```{r}
+tidy_transit %>%
+  distinct(line, station_name) %>%
+  nrow()
+```
+
+- number of stations that are ada compliant
+
+```{r}
+tidy_transit %>%
+  filter(ada == TRUE) %>%
+  distinct(line, station_name) %>%
+  nrow()
+```
+
+- proportion of station entrances / exits without vending 
+
+```{r}
+tidy_transit %>%
+  filter(vending == "YES") %>%
+  distinct(line, station_name) %>%
+  nrow()
+```
+
+```{r}
+462/465
+```
+
+## Problem 2
+
+- Input Mr.Trash Wheel Data 
+
+```{r}
+mr_tw <- read_excel("./Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "Mr. Trash Wheel", range = "A2:N535") %>% janitor::clean_names()
+```
+
+- Clean Mr.Trash Wheel Data 
+
+```{r}
+tidy_mrtw <- mr_tw %>%
+  filter(!is.na(dumpster)) %>%
+  mutate(sports_balls = as.integer(sports_balls)) %>%
+  mutate(vessel_type = "Mr.Trash Wheel") %>%
+  slice(1:(n()-1)) %>%
+  mutate(dumpster = as.numeric(dumpster))
+
+tidy_mrtw
+```
+
+- Clean Professor Trash Wheel Data 
+
+```{r}
+prof_tw <- read_excel("./Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "Professor Trash Wheel", range = "A2:N117") %>% janitor::clean_names()
+```
+
+```{r}
+tidy_proftw <- prof_tw %>%
+  filter(!is.na(dumpster)) %>%
+  mutate(sports_balls = as.integer(sports_balls)) %>%
+  mutate(vessel_type = "Professor Trash Wheel")
+
+tidy_proftw
+```
+
+- Bind 2 Data Together
+
+```{r}
+tidy_tw <- bind_rows(tidy_mrtw,tidy_proftw)
+tidy_tw
+```
+
+- Description of the combined tidied dataset
+
+
+- total weight of trash collected by Mr. Trash Wheel
+```{r}
+tidy_tw %>%
+  filter(vessel_type == "Professor Trash Wheel") %>%
+  select(weight_tons) %>%
+  sum()
+```
+
+```{r}
+tidy_tw %>%
+  group_by(vessel_type) %>%
+  summarise(sum(weight_tons))
+```
+
+```{r}
+tidy_tw %>%
+  filter(year == 2020, vessel_type == "Mr.Trash Wheel") %>%
+  select(sports_balls) %>%
+  sum()
+```
+
+## Problem 3
+
+- First, clean the data in pols-month.csv
+
+```{r}
+pols_month <- read_csv(file = "./pols-month.csv") %>% janitor::clean_names()
+```
+
+```{r}
+tidy_pm <- pols_month %>%
+  separate(mon, into = c("year","month","day"), sep = "-") %>%
+  mutate(month = month.abb[as.numeric(month)]) %>%
+  mutate(president = ifelse(prez_gop == 1, "Republican", "Democrat")) %>%
+  select(-prez_gop,-prez_dem,-day)
+
+tidy_pm
+```
+
+- Second, clean the data in snp.csv using a similar process
+
+```{r}
+snp <- read_csv(file = "./snp.csv") %>% janitor::clean_names()
+```
+
+```{r}
+tidy_snp <- snp %>%
+  mutate(date = format(as.Date(snp$date, "%m/%d/%y"), "%Y/%m/%d")) %>%
+  separate(date, into = c("year", "month", "day"), sep = "/") %>%
+  mutate(month = month.abb[as.numeric(month)]) %>%
+  select(-day)
+
+tidy_snp
+```
+
+- Third, tidy the unemployment data so that it can be merged with the previous datasets
+
+```{r}
+unemploy <- read_csv(file = "./unemployment.csv") %>% janitor::clean_names()
+```
+
+```{r}
+tidy_unemploy <- unemploy %>%
+  pivot_longer(2:13, names_to = "month", values_to = "unemploy_perc") %>%
+  mutate(month = str_to_title(month)) %>%
+  mutate(year = as.character(year))
+```
+
+```{r}
+tidy_unemploy
+```
+
+```{r}
+combined_df <- left_join(tidy_pm, tidy_snp) %>%
+  left_join(tidy_unemploy)
+
+combined_df
+```
+
