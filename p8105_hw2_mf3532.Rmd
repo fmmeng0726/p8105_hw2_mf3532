@@ -95,35 +95,48 @@ tidy_transit %>%
 (1) Clean Mr.Trash Wheel Data 
 
 ```{r}
-mr_tw <- read_excel("./Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "Mr. Trash Wheel", range = "A2:N535") %>% janitor::clean_names()
+mr_tw <- read_excel("./Trash Wheel Collection Data.xlsx", sheet = "Mr. Trash Wheel", range = "A2:N550") %>% janitor::clean_names()
+```
 
+
+
+```{r}
 tidy_mrtw <- mr_tw %>%
   mutate(sports_balls = as.integer(sports_balls)) %>%
   mutate(vessel_type = "Mr.Trash Wheel") %>%
-  mutate(dumpster = as.integer(dumpster))%>%
+  mutate(year = as.integer(year), dumpster = as.integer(dumpster))%>%
   drop_na(dumpster)
 
+tidy_mrtw
 ```
 
 (2) Clean Professor Trash Wheel Data 
 
 ```{r}
-prof_tw <- read_excel("./Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "Professor Trash Wheel", range = "A2:N117") %>% janitor::clean_names()
+prof_tw <- read_excel("./Trash Wheel Collection Data.xlsx", sheet = "Professor Trash Wheel", range = "A2:M97") %>% janitor::clean_names()
+```
 
+
+```{r}
 tidy_proftw <- prof_tw %>%
-  filter(!is.na(dumpster)) %>%
-  mutate(sports_balls = as.integer(sports_balls)) %>%
-  mutate(vessel_type = "Professor Trash Wheel")
+  drop_na(dumpster) %>%
+  mutate(year = as.integer(year), vessel_type = "Professor Trash Wheel") 
 
+tidy_proftw
 ```
 
 (3) Bind 2 Data Together
 
+As the professor trash wheel sheet doesn't have the `sports_balls` variable, we need to add a `sports_balls` variable with all `NA`s, indicating that we don't know the the number of balls collected by professor trash wheel.
+
 ```{r}
-tidy_tw <- bind_rows(tidy_mrtw,tidy_proftw)
+tidy_proftw2 <- tidy_proftw %>% mutate(sports_balls = as.integer(NA))
+tidy_tw <- bind_rows(tidy_mrtw, tidy_proftw2)
+tidy_tw
 ```
 
-Combining those two datasets, we have a combined dataset that contains `r nrow(tidy_tw)` rows and `r ncol(tidy_tw)` columns. There are in total `r nrow(tidy_tw)` in the combined dataset. An added `vessel_type` variable specifies the vessel that the observation belongs to. some other key variables include: dumpster number, month, year, date, weight, volume, different kinds of trash and their amount, homes powered by trash-made electricity.
+
+Combining those two datasets, we have a combined dataset that contains `r nrow(tidy_tw)` rows and `r ncol(tidy_tw)` columns. There are in total `r nrow(tidy_tw)` obervations in the combined dataset. An added `vessel_type` variable specifies the vessel that the observation belongs to. some other key variables include: dumpster number, month, year, date, weight, volume, different kinds of trash and their amount, homes powered by trash-made electricity. Some values for certain variables are missing, in this case, we are keeping those missing observations as it will still provide some useful information on the associated date.
 
 
 - total weight of trash collected by professor trash wheel
@@ -150,21 +163,34 @@ tidy_tw %>%
 
 ```{r}
 pols_month <- read_csv(file = "./pols-month.csv") %>% janitor::clean_names()
+```
 
+First, we check whether in certain period of time there are more than one president. 
+
+```{r}
+pols_month %>% filter(prez_gop != 0 & prez_gop != 1)
+```
+
+```{r}
+pols_month %>% filter(prez_dem != 0 & prez_dem != 1)
+```
+
+We notice that in from August to December in 1974, there are two presidents that are republicans shown in the dataset. In reality, Ford took Nixon's presidency in August 1974 and Nixon resigned at that time, some we just consider in these periods we have a republican president.
+
+```{r}
 tidy_pm <- pols_month %>%
   separate(mon, into = c("year","month","day"), sep = "-") %>%
   mutate(month = month.name[as.numeric(month)], year = as.integer(year)) %>%
-  mutate(president = ifelse(prez_gop == 1, "Republican", "Democrat")) %>%
+  mutate(president = ifelse(prez_gop >= 1, "Republican", "Democrat")) %>%
   select(-prez_gop,-prez_dem,-day)
-
 ```
-
 
 (2) Second, clean the data in snp.csv using a similar process
 
 ```{r}
 snp <- read_csv(file = "./snp.csv") %>% janitor::clean_names()
 ```
+
 
 
 ```{r}
