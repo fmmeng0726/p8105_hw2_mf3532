@@ -27,7 +27,6 @@ tidy_transit <- nyc_transit %>%
   mutate(route8 = as.character(route8), route9 = as.character(route9), route10 = as.character(route10), route11 = as.character(route11)) %>%
   mutate(entry = ifelse(entry == "YES", TRUE, FALSE))
 
-tidy_transit
 ```
 
 the dataset contains `r nrow(tidy_transit)` rows and `r ncol(tidy_transit)` columns. It contains variables: `r names(tidy_transit)`. The above cleaning processes include: select desirable variables, change variables: route8, rout9, route10 into character. and convert the entry variable from character to logical variable.
@@ -98,11 +97,9 @@ tidy_transit %>%
 mr_tw <- read_excel("./Trash Wheel Collection Data.xlsx", sheet = "Mr. Trash Wheel", range = "A2:N550") %>% janitor::clean_names()
 ```
 
-
-
 ```{r}
 tidy_mrtw <- mr_tw %>%
-  mutate(sports_balls = as.integer(sports_balls)) %>%
+  mutate(sports_balls = as.integer(round(sports_balls))) %>%
   mutate(vessel_type = "Mr.Trash Wheel") %>%
   mutate(year = as.integer(year), dumpster = as.integer(dumpster))%>%
   drop_na(dumpster)
@@ -180,9 +177,12 @@ We notice that in from August to December in 1974, there are two presidents that
 ```{r}
 tidy_pm <- pols_month %>%
   separate(mon, into = c("year","month","day"), sep = "-") %>%
-  mutate(month = month.name[as.numeric(month)], year = as.integer(year)) %>%
+  mutate(month = month.name[as.numeric(month)], 
+         year = as.integer(year)) %>%
   mutate(president = ifelse(prez_gop >= 1, "Republican", "Democrat")) %>%
-  select(-prez_gop,-prez_dem,-day)
+  select(-prez_gop,-prez_dem,-day) %>%
+  mutate(month = factor(month, levels = c('January','February','March','April','May','June','July','August','September','October','November','December' ))) %>%
+  arrange(year, month) 
 ```
 
 (2) Second, clean the data in snp.csv using a similar process
@@ -201,7 +201,9 @@ tidy_snp <- snp %>%
          day = as.integer(day)) %>%
   mutate(year = as.integer(ifelse(year <= 15, year + 2000, year + 1900))) %>%
   mutate(month = month.name[as.numeric(month)]) %>%
-  select(year, month, close)
+  select(year, month, close) %>%
+  mutate(month = factor(month, levels = c('January','February','March','April','May','June','July','August','September','October','November','December' ))) %>%
+  arrange(year, month)
 
 ```
 
@@ -226,20 +228,21 @@ tidy_unemploy <- unemploy %>%
                         'aug' = 'August', 
                         'sep' = "September", 
                         'oct' = 'October', 
-                        nov = 'November', 
-                        dec = 'December'), 
-         year = as.integer(year))
+                        'nov' = 'November', 
+                        'dec' = 'December'), 
+         year = as.integer(year)) %>%
+  mutate(month = factor(month, levels = c('January','February','March','April','May','June','July','August','September','October','November','December' ))) %>%
+  arrange(year, month)
 
 ```
 
 (4) Combine all three dataset together
 
 ```{r}
-combined_df <-  merge(tidy_pm, tidy_snp) %>% merge(tidy_unemploy)
-
+combined_df <-  full_join(tidy_pm, tidy_snp) %>% full_join(tidy_unemploy)
 ```
 
-Combining those three datasets, and dropping missing values for each variable, we have a combined dataset that contains `r nrow(combined_df)` rows and `r ncol(combined_df)` columns. There are in total `r nrow(combined_df)` in the combined dataset., the range of years is: `r max(combined_df$year)-min(combined_df$year)`. Some key variables include:
+Combining those three datasets, we have a combined dataset that contains `r nrow(combined_df)` rows and `r ncol(combined_df)` columns. There are in total `r nrow(combined_df)` in the combined dataset., the range of years is: `r max(combined_df$year)-min(combined_df$year)`. Some key variables include:
 
 - year
 - month
